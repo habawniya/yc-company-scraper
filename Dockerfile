@@ -77,82 +77,78 @@
 
 
 # syntax=docker/dockerfile:1
-ARG RUBY_VERSION=3.2.2
-FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
 
+ARG RUBY_VERSION=3.2.2
+FROM ruby:$RUBY_VERSION-slim AS base
+
+# Set working directory
 WORKDIR /rails
 
-# Install base packages + Chromium (for Ferrum)
+# Install base dependencies
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y \
-      curl \
-      libjemalloc2 \
-      libvips \
-      sqlite3 \
-      chromium \
-      fonts-liberation \
-      libnss3 \
-      libxss1 \
-      libatk1.0-0 \
-      libatk-bridge2.0-0 \
-      libcups2 \
-      libgtk-3-0 \
-      libx11-xcb1 \
-      libxcomposite1 \
-      libxdamage1 \
-      libxrandr2 \
-      libgbm1 \
-      libpango1.0-0 \
-      libasound2 \
-      build-essential \
-      git \
-      libyaml-dev \
-      pkg-config && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+        curl \
+        libjemalloc2 \
+        libvips \
+        sqlite3 \
+        chromium \
+        build-essential \
+        git \
+        libyaml-dev \
+        pkg-config && \
+    rm -rf /var/lib/apt/lists/*
 
-# Rails production environment
+# Set Rails environment
 ENV RAILS_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH="/usr/local/bundle" \
-    BUNDLE_WITHOUT="development"
+    BUNDLE_WITHOUT="development:test" \
+    PATH="/usr/local/bundle/bin:$PATH"
 
-# ---------------- Build Stage ----------------
-FROM base AS build
-
-WORKDIR /rails
-
-# Copy gemfiles and install gems
+# Copy Gemfile and install gems
 COPY Gemfile Gemfile.lock ./
 RUN bundle install && \
     rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
     bundle exec bootsnap precompile --gemfile
 
-# Copy application code
+# Copy app code
 COPY . .
 
 # Precompile bootsnap code
 RUN bundle exec bootsnap precompile app/ lib/
 
-# Precompile assets with a valid SECRET_KEY_BASE
-RUN SECRET_KEY_BASE=$(bundle exec rails secret) ./bin/rails assets:precompile
+# Precompile Rails assets (provide a dummy SECRET_KEY_BASE)
+RUN SECRET_KEY_BASE_DUMMY=1 bin/rails assets:precompile
 
-# ---------------- Final Stage ----------------
-FROM base
-
+# Final image
+FROM ruby:$RUBY_VERSION-slim AS final
 WORKDIR /rails
 
-# Copy gems and app from build stage
-COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
-COPY --from=build /rails /rails
+# Copy gems and app code from build stage
+COPY --from=base /usr/local/bundle /usr/local/bundle
+COPY --from=base /rails /rails
 
-# Add non-root user for security
+# Install runtime dependencies including Chromium
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+        libjemalloc2 \
+        libvips \
+        sqlite3 \
+        chromium && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
 RUN groupadd --system --gid 1000 rails && \
     useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash && \
     chown -R rails:rails db log storage tmp
-USER 1000:1000
+
+USER rails
 
 # Entrypoint
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
 
+# Expose port Render will use
 EXPOSE 80
-CMD ["./bin/rails", "server", "-b", "0.0.0.0", "-p", "${PORT:-3000}"]
+
+# Start Rails server using Render's $PORT
+CMD ["bin/rails", "server", "-b", "0.0.0.0", "-p", "${PORT:-3000}"]
