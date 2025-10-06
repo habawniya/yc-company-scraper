@@ -422,7 +422,7 @@ DEPENDENCIES
   brakeman
   capybara
   debug
-  ferrum (~> 0.17)
+  ferrum
   httparty
   importmap-rails
   jbuilder
