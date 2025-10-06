@@ -14,4 +14,6 @@ Rails.application.routes.draw do
   # root "posts#index"
   get 'scrape/yc', to: 'scraper#ycombinator'
 
+ # config/routes.rb
+  root to: proc { [200, {}, ['OK']] }
 end

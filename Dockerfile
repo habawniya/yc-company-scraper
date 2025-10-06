@@ -118,7 +118,7 @@ COPY . .
 RUN bundle exec bootsnap precompile app/ lib/
 
 # Precompile Rails assets (provide a dummy SECRET_KEY_BASE)
-RUN SECRET_KEY_BASE_DUMMY=1 bin/rails assets:precompile
+RUN SECRET_KEY_BASE=$(bundle exec rails secret) ./bin/rails assets:precompile
 
 # Final image
 FROM ruby:$RUBY_VERSION-slim AS final
@@ -147,8 +147,8 @@ USER rails
 # Entrypoint
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
 
-# Expose port Render will use
+# Expose port
 EXPOSE 80
 
-# Start Rails server using Render's $PORT
-CMD ["bin/rails", "server", "-b", "0.0.0.0", "-p", "${PORT:-3000}"]
+# Start Rails server with Render $PORT
+CMD bin/rails server -b 0.0.0.0 -p ${PORT:-3000}

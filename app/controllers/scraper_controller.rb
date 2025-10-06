@@ -8,7 +8,7 @@ require 'concurrent'
 
 class ScraperController < ApplicationController
   def ycombinator
-    browser = Ferrum::Browser.new(timeout: 60)
+   browser = Ferrum::Browser.new(headless: true, timeout: 60)
     browser.goto(filtered_url)
 
     companies = []
