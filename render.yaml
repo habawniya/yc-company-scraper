@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: Web_Scraping
+    env: ruby
+    plan: free
+    buildCommand: |
+      apt-get update
+      apt-get install -y chromium
+      bundle install
+      yarn install --check-files
+      bin/rails assets:precompile
+    startCommand: bundle exec puma -C config/puma.rb
+    envVars:
+      - key: RAILS_MASTER_KEY
+        fromDatabase: true
+      - key: SECRET_KEY_BASE
+        fromDatabase: true
+      - key: CHROME_PATH
+        value: /usr/bin/chromium
