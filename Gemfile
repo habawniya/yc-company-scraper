@@ -62,8 +62,10 @@ gem 'selenium-webdriver'
 gem 'webdrivers'
 gem 'nokogiri'
 gem 'httparty'
-gem 'ferrum'
+# gem 'ferrum'
 gem 'open-uri'
+
+gem 'ferrum', '~> 0.17', require: false
 
 group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
